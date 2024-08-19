@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tools Collection</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .tool-card {
+            text-align: center;
+            border: 1px solid #007bff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px;
+            transition: transform 0.2s ease;
+        }
+        .tool-card:hover {
+            transform: scale(1.05);
+        }
+        .tool-title {
+            font-size: 1.2em;
+            margin-top: 10px;
+            color: #007bff;
+        }
+        .tool-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4 text-center">Tools Collection</h1>
+        <div class="row">
+            <div class="col-md-4">
+                <a href="bmp_to_rgb565/index.html" class="tool-link">
+                    <div class="tool-card">
+                        <!-- <img src="path_to_image_or_icon_for_tool" alt="BMP to RGB565 Converter" style="width:100px; height:100px;"> -->
+                        <div class="tool-title">BMP to RGB565 Converter</div>
+                    </div>
+                </a>
+            </div>
+            <!-- Add more tools here in a similar format -->
+            <div class="col-md-4">
+                <a href="another_tool/index.html" class="tool-link">
+                    <div class="tool-card">
+                        <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Another Tool" style="width:100px; height:100px;"> -->
+                        <div class="tool-title">Another Tool</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
