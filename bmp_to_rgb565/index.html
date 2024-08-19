@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMP to RGB565 Converter</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .drag-drop-area {
+            border: 2px dashed #007bff;
+            padding: 50px;
+            text-align: center;
+            color: #007bff;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .drag-drop-area.dragover {
+            background-color: #e9ecef;
+        }
+        .output-container {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4 text-center">BMP to RGB565 Converter</h1>
+        
+        <div class="drag-drop-area" id="drag-drop-area">
+            <h3>Drag & Drop BMP file here</h3>
+            <p>or</p>
+            <input type="file" id="fileInput" class="btn btn-primary" accept=".bmp">
+        </div>
+        
+        <div class="output-container" id="output-container">
+            <h3 class="mt-4">Generated Header File:</h3>
+            <textarea id="output" class="form-control" rows="10" readonly></textarea>
+            <div class="mt-3">
+                <button id="copyButton" class="btn btn-info">Copy to Clipboard</button>
+                <a id="downloadLink" class="btn btn-success ml-2" download="">Download Header File</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const dragDropArea = document.getElementById('drag-drop-area');
+            const fileInput = document.getElementById('fileInput');
+            const outputContainer = document.getElementById('output-container');
+            const outputTextArea = document.getElementById('output');
+            const downloadLink = document.getElementById('downloadLink');
+            const copyButton = document.getElementById('copyButton');
+
+            function processImage(file) {
+                const fileName = file.name.replace(/\.[^/.]+$/, ""); // Get filename without extension
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = 128;
+                        canvas.height = 160;
+                        ctx.drawImage(img, 0, 0, 128, 160);
+
+                        let cArray = `#include <Arduino.h>\n\nconst uint16_t ${fileName}[] PROGMEM = {\n`;
+                        for (let y = 0; y < 160; y++) {
+                            for (let x = 0; x < 128; x++) {
+                                const pixel = ctx.getImageData(x, y, 1, 1).data;
+                                const r = pixel[0] & 0xF8;
+                                const g = pixel[1] & 0xFC;
+                                const b = pixel[2] & 0xF8;
+                                const rgb565 = ((r << 8) | (g << 3) | (b >> 3));
+                                cArray += `0x${rgb565.toString(16).padStart(4, '0').toUpperCase()}, `;
+                            }
+                            cArray += '\n';
+                        }
+                        cArray += '};\n';
+
+                        outputTextArea.value = cArray;
+                        outputContainer.style.display = 'block';
+                        downloadLink.download = `${fileName}.h`;
+                        const blob = new Blob([cArray], { type: 'text/plain' });
+                        downloadLink.href = URL.createObjectURL(blob);
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+
+            dragDropArea.addEventListener('dragover', function(event) {
+                event.preventDefault();
+                dragDropArea.classList.add('dragover');
+            });
+
+            dragDropArea.addEventListener('dragleave', function(event) {
+                dragDropArea.classList.remove('dragover');
+            });
+
+            dragDropArea.addEventListener('drop', function(event) {
+                event.preventDefault();
+                dragDropArea.classList.remove('dragover');
+                const file = event.dataTransfer.files[0];
+                if (file && file.type === 'image/bmp') {
+                    processImage(file);
+                } else {
+                    alert('Please drop a valid BMP file.');
+                }
+            });
+
+            fileInput.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file && file.type === 'image/bmp') {
+                    processImage(file);
+                } else {
+                    alert('Please select a valid BMP file.');
+                }
+            });
+
+            copyButton.addEventListener('click', function() {
+                outputTextArea.select();
+                document.execCommand('copy');
+            });
+        });
+    </script>
+</body>
+</html>
