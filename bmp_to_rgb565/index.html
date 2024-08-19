@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BMP to RGB565 Converter</title>
+    <title>Kabani Tech BMP to RGB565 Converter</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
         .drag-drop-area {
             border: 2px dashed #007bff;
@@ -19,26 +20,37 @@
         }
         .output-container {
             display: none;
+            margin-top: 20px;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+        .btn-group {
+            margin-bottom: 10px;
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1 class="my-4 text-center">BMP to RGB565 Converter</h1>
+        <h1 class="my-4 text-center">Kabani Tech BMP to RGB565 Converter<br>for 160x128 Display</h1>
         
         <div class="drag-drop-area" id="drag-drop-area">
-            <h3>Drag & Drop BMP file here</h3>
+            <h3>Drag & Drop BMP files here</h3>
             <p>or</p>
-            <input type="file" id="fileInput" class="btn btn-primary" accept=".bmp">
+            <input type="file" id="fileInput" class="btn btn-primary" accept=".bmp" multiple>
         </div>
         
-        <div class="output-container" id="output-container">
-            <h3 class="mt-4">Generated Header File:</h3>
-            <textarea id="output" class="form-control" rows="10" readonly></textarea>
-            <div class="mt-3">
-                <button id="copyButton" class="btn btn-info">Copy to Clipboard</button>
-                <a id="downloadLink" class="btn btn-success ml-2" download="">Download Header File</a>
+        <div id="output-container" class="output-container">
+            <div class="btn-group">
+                <button id="copyButton" class="btn btn-info"><i class="fas fa-clipboard"></i> Copy to Clipboard</button>
+                <a id="downloadLink" class="btn btn-success ml-2"><i class="fas fa-download"></i> Download Header File</a>
+                <button id="downloadAllButton" class="btn btn-danger ml-2"><i class="fas fa-file-archive"></i> Download All as ZIP</button>
             </div>
+            <ul class="nav nav-tabs" id="outputTabs" role="tablist"></ul>
+            <div class="tab-content" id="outputTabContent"></div>
         </div>
     </div>
 
@@ -47,9 +59,14 @@
             const dragDropArea = document.getElementById('drag-drop-area');
             const fileInput = document.getElementById('fileInput');
             const outputContainer = document.getElementById('output-container');
-            const outputTextArea = document.getElementById('output');
-            const downloadLink = document.getElementById('downloadLink');
+            const outputTabs = document.getElementById('outputTabs');
+            const outputTabContent = document.getElementById('outputTabContent');
             const copyButton = document.getElementById('copyButton');
+            const downloadLink = document.getElementById('downloadLink');
+            const downloadAllButton = document.getElementById('downloadAllButton');
+            const zip = new JSZip();
+            let currentTextArea;
+            let textAreas = {};  // Dictionary to store text areas by tab id
 
             function processImage(file) {
                 const fileName = file.name.replace(/\.[^/.]+$/, ""); // Get filename without extension
@@ -60,33 +77,98 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        canvas.width = 128;
-                        canvas.height = 160;
-                        ctx.drawImage(img, 0, 0, 128, 160);
 
+                        // Ensure the canvas matches the desired output size
+                        canvas.width = 160;
+                        canvas.height = 128;
+
+                        // Draw the image on the canvas, resizing it to fit
+                        ctx.drawImage(img, 0, 0, 160, 128);
+
+                        // Initialize the C array string with the header and array declaration
                         let cArray = `#include <Arduino.h>\n\nconst uint16_t ${fileName}[] PROGMEM = {\n`;
-                        for (let y = 0; y < 160; y++) {
-                            for (let x = 0; x < 128; x++) {
+                        
+                        // Iterate over each pixel and convert it to RGB565
+                        for (let y = 0; y < 128; y++) { // Adjust for the 128 rows
+                            for (let x = 0; x < 160; x++) { // Adjust for the 160 columns
+                                // Get the pixel data (RGBA)
                                 const pixel = ctx.getImageData(x, y, 1, 1).data;
-                                const r = pixel[0] & 0xF8;
-                                const g = pixel[1] & 0xFC;
-                                const b = pixel[2] & 0xF8;
+                                
+                                // Convert to RGB565
+                                const r = pixel[0] & 0xF8; // 5 bits for red
+                                const g = pixel[1] & 0xFC; // 6 bits for green
+                                const b = pixel[2] & 0xF8; // 5 bits for blue
                                 const rgb565 = ((r << 8) | (g << 3) | (b >> 3));
+                                
+                                // Append the RGB565 value to the C array string
                                 cArray += `0x${rgb565.toString(16).padStart(4, '0').toUpperCase()}, `;
                             }
-                            cArray += '\n';
+                            cArray += '\n'; // Newline after each row for readability
                         }
-                        cArray += '};\n';
+                        
+                        cArray += '};\n'; // Close the array
 
-                        outputTextArea.value = cArray;
+                        // Create new tab and content for each file
+                        const tabId = `tab-${fileName}`;
+                        const tabContentId = `tab-content-${fileName}`;
+
+                        const newTab = document.createElement('li');
+                        newTab.classList.add('nav-item');
+                        newTab.innerHTML = `
+                            <a class="nav-link" id="${tabId}-tab" data-toggle="tab" href="#${tabContentId}" role="tab" aria-controls="${tabContentId}" aria-selected="false">${fileName}</a>
+                        `;
+                        outputTabs.appendChild(newTab);
+
+                        const newTabContent = document.createElement('div');
+                        newTabContent.classList.add('tab-pane', 'fade');
+                        newTabContent.id = tabContentId;
+                        newTabContent.role = 'tabpanel';
+                        newTabContent.ariaLabelledby = `${tabId}-tab`;
+                        newTabContent.innerHTML = `
+                            <textarea class="form-control" rows="10" readonly>${cArray}</textarea>
+                        `;
+                        outputTabContent.appendChild(newTabContent);
+
+                        // Store the textarea in the dictionary
+                        textAreas[tabId] = newTabContent.querySelector('textarea');
+
+                        // Add file content to ZIP
+                        zip.file(`${fileName}.h`, cArray);
+
+                        // Activate the first tab and content by default
+                        if (outputTabs.children.length === 1) {
+                            newTab.querySelector('a').classList.add('active');
+                            newTabContent.classList.add('show', 'active');
+                            currentTextArea = textAreas[tabId];
+                            downloadLink.download = `${fileName}.h`;
+                            downloadLink.href = createDownloadLink(cArray);
+                        }
+
+                        // Update the download link and current textarea when a tab is clicked
+                        newTab.querySelector('a').addEventListener('click', function() {
+                            currentTextArea = textAreas[tabId];
+                            downloadLink.download = `${fileName}.h`;
+                            downloadLink.href = createDownloadLink(cArray);
+                        });
+
+                        // Show the output container
                         outputContainer.style.display = 'block';
-                        downloadLink.download = `${fileName}.h`;
-                        const blob = new Blob([cArray], { type: 'text/plain' });
-                        downloadLink.href = URL.createObjectURL(blob);
                     };
                 };
                 reader.readAsDataURL(file);
             }
+
+            function createDownloadLink(cArray) {
+                const blob = new Blob([cArray], { type: 'text/plain' });
+                return URL.createObjectURL(blob);
+            }
+
+            copyButton.addEventListener('click', function() {
+                if (currentTextArea) {
+                    currentTextArea.select();
+                    document.execCommand('copy');
+                }
+            });
 
             dragDropArea.addEventListener('dragover', function(event) {
                 event.preventDefault();
@@ -100,28 +182,36 @@
             dragDropArea.addEventListener('drop', function(event) {
                 event.preventDefault();
                 dragDropArea.classList.remove('dragover');
-                const file = event.dataTransfer.files[0];
-                if (file && file.type === 'image/bmp') {
-                    processImage(file);
-                } else {
-                    alert('Please drop a valid BMP file.');
+                const files = event.dataTransfer.files;
+                for (const file of files) {
+                    if (file.type === 'image/bmp') {
+                        processImage(file);
+                    } else {
+                        alert('Please drop a valid BMP file.');
+                    }
                 }
             });
 
             fileInput.addEventListener('change', function(event) {
-                const file = event.target.files[0];
-                if (file && file.type === 'image/bmp') {
-                    processImage(file);
-                } else {
-                    alert('Please select a valid BMP file.');
+                const files = event.target.files;
+                for (const file of files) {
+                    if (file.type === 'image/bmp') {
+                        processImage(file);
+                    } else {
+                        alert('Please select a valid BMP file.');
+                    }
                 }
             });
 
-            copyButton.addEventListener('click', function() {
-                outputTextArea.select();
-                document.execCommand('copy');
+            downloadAllButton.addEventListener('click', function() {
+                zip.generateAsync({ type: 'blob' }).then(function(content) {
+                    saveAs(content, "header_files.zip");
+                });
             });
         });
     </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
