@@ -35,7 +35,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="my-4 text-center">Kabani Tech BMP to RGB565 Converter<br>for 160x128 Display</h1>
+        <h1 class="my-4 text-center">Kabani Tech BMP to RGB565 Converter<br>for Various Resolutions</h1>
         
         <div class="drag-drop-area" id="drag-drop-area">
             <h3>Drag & Drop BMP files here</h3>
@@ -78,19 +78,19 @@
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
 
-                        // Ensure the canvas matches the desired output size
-                        canvas.width = 160;
-                        canvas.height = 128;
+                        // Use the image's native width and height
+                        canvas.width = img.width;
+                        canvas.height = img.height;
 
-                        // Draw the image on the canvas, resizing it to fit
-                        ctx.drawImage(img, 0, 0, 160, 128);
+                        // Draw the image on the canvas at its native size
+                        ctx.drawImage(img, 0, 0, img.width, img.height);
 
                         // Initialize the C array string with the header and array declaration
                         let cArray = `#include <Arduino.h>\n\nconst uint16_t ${fileName}[] PROGMEM = {\n`;
                         
                         // Iterate over each pixel and convert it to RGB565
-                        for (let y = 0; y < 128; y++) { // Adjust for the 128 rows
-                            for (let x = 0; x < 160; x++) { // Adjust for the 160 columns
+                        for (let y = 0; y < img.height; y++) {
+                            for (let x = 0; x < img.width; x++) {
                                 // Get the pixel data (RGBA)
                                 const pixel = ctx.getImageData(x, y, 1, 1).data;
                                 
@@ -108,14 +108,15 @@
                         
                         cArray += '};\n'; // Close the array
 
-                        // Create new tab and content for each file
+                        // Create new tab and content for each file with resolution in the tab header
+                        const resolution = `${img.width}x${img.height}`;
                         const tabId = `tab-${fileName}`;
                         const tabContentId = `tab-content-${fileName}`;
 
                         const newTab = document.createElement('li');
                         newTab.classList.add('nav-item');
                         newTab.innerHTML = `
-                            <a class="nav-link" id="${tabId}-tab" data-toggle="tab" href="#${tabContentId}" role="tab" aria-controls="${tabContentId}" aria-selected="false">${fileName}</a>
+                            <a class="nav-link" id="${tabId}-tab" data-toggle="tab" href="#${tabContentId}" role="tab" aria-controls="${tabContentId}" aria-selected="false">${fileName} (${resolution})</a>
                         `;
                         outputTabs.appendChild(newTab);
 
