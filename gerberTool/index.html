@@ -1,0 +1,311 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kabani Tech PCB Stencil Quotation Generator</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .drag-drop-area {
+            border: 2px dashed #007bff;
+            padding: 50px;
+            text-align: center;
+            color: #007bff;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .drag-drop-area.dragover {
+            background-color: #e9ecef;
+        }
+        .result-container {
+            display: none;
+            margin-top: 20px;
+        }
+        .dimensions-card {
+            margin-bottom: 20px;
+        }
+        #debugLog {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4 text-center">Kabani Tech PCB Stencil Quotation Generator</h1>
+        
+        <div class="drag-drop-area" id="dragDropArea">
+            <h3>Drag & Drop Gerber ZIP file here</h3>
+            <p>or</p>
+            <input type="file" id="fileInput" class="btn btn-primary" accept=".zip">
+        </div>
+
+        <div id="resultContainer" class="result-container">
+            <div class="card dimensions-card">
+                <div class="card-header">
+                    <h5 class="mb-0">Board Dimensions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <p><strong>Length:</strong> <span id="lengthValue">-</span> mm</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>Width:</strong> <span id="widthValue">-</span> mm</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p><strong>Area:</strong> <span id="areaValue">-</span> mm²</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Quotation</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="border">Stencil Boarder:</label>
+                        <select class="form-control" id="border">
+                            <option value="20">20.00mm</option>
+                            <option value="30">30.00mm</option>
+                            <option value="40">40.00mm</option>
+                            <option value="50">50.00mm</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <h5>Estimated Price: ₹ <span id="stencilCostValue">-</span></h5>
+                        <h5>Shipping: ₹ <span id="shippingCostValue">-</span></h5>
+                        <h5>Total including GST Price: ₹ <span id="totalCostValue">-</span></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="debugLog"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <script>
+ document.addEventListener("DOMContentLoaded", function () {
+    const dragDropArea = document.getElementById('dragDropArea');
+    const fileInput = document.getElementById('fileInput');
+    const resultContainer = document.getElementById('resultContainer');
+    const debugLog = document.getElementById('debugLog');
+    const border = document.getElementById('border');
+    let coordinates;
+    let length;
+    let width;
+
+    // Utility to log debug messages
+    function log(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        debugLog.innerHTML += `[${timestamp}] ${message}<br>`;
+        debugLog.scrollTop = debugLog.scrollHeight;
+        console.log(message);
+    }
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dragDropArea.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    });
+
+    // Highlight drag area on dragenter/dragover
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dragDropArea.addEventListener(eventName, () => dragDropArea.classList.add('dragover'));
+    });
+
+    // Remove highlight on dragleave/drop
+    ['dragleave', 'drop'].forEach(eventName => {
+        dragDropArea.addEventListener(eventName, () => dragDropArea.classList.remove('dragover'));
+    });
+
+    // Handle drop event
+    dragDropArea.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files.length) handleFiles(files);
+    });
+
+    // Handle file input change
+    fileInput.addEventListener('change', e => {
+        const files = e.target.files;
+        if (files.length) handleFiles(files);
+    });
+
+    border.addEventListener('change',e =>{
+        let selectedValue = Math.round(e.target.value);
+        let areaWithborder = Math.round((Math.round(length+selectedValue))*(Math.round(width+selectedValue)));
+        log(`Length with border: ${Math.round(length+selectedValue)} mm, Width with border: ${Math.round(width+selectedValue)} mm, Area with border: ${areaWithborder} mm²`);
+        let cost = getCost(areaWithborder);
+        document.getElementById('stencilCostValue').textContent = cost.stencil;
+        document.getElementById('shippingCostValue').textContent = cost.shipping;
+        document.getElementById('totalCostValue').textContent = cost.total;
+    });
+
+    async function handleFiles(files) {
+        if (files.length !== 1 || !files[0].name.toLowerCase().endsWith('.zip')) {
+            alert('Please upload a single ZIP file containing Gerber files.');
+            return;
+        }
+
+        log(`Processing file: ${files[0].name}`);
+        resultContainer.style.display = 'block';
+
+        try {
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(files[0]);
+            let boardOutlineFile = null;
+
+            // Define outline file patterns
+            const outlinePatterns = [
+                /edge[._]cuts\.gbr$/i,
+                /\.gko$/i,
+                /\.gm1$/i,
+                /dimension/i,
+                /outline/i
+            ];
+
+            // Find the outline file
+            log('Searching for board outline file...');
+            for (let filename in zipContent.files) {
+                if (outlinePatterns.some(pattern => pattern.test(filename))) {
+                    boardOutlineFile = zipContent.files[filename];
+                    break;
+                }
+            }
+
+            if (!boardOutlineFile) {
+                alert('Could not find board outline file. Check the ZIP content.');
+                return;
+            }
+
+            log('Reading board outline file...');
+            const content = await boardOutlineFile.async('string');
+            processOutline(content);
+        } catch (error) {
+            log(`Error: ${error.message}`);
+            alert('Failed to process the ZIP file. Please check the console for details.');
+        }
+    }
+
+    function processOutline(content) {
+        log('Extracting coordinates...');
+        coordinates = extractCoordinates(content);
+
+        if (coordinates.length > 2) {
+            const bounds = calculateBounds(coordinates);
+            const polygonArea = calculatePolygonArea(coordinates);
+            length = Math.abs(bounds.xMax - bounds.xMin);
+            width = Math.abs(bounds.yMax - bounds.yMin);
+
+            document.getElementById('lengthValue').textContent = length.toFixed(2);
+            document.getElementById('widthValue').textContent = width.toFixed(2);
+            document.getElementById('areaValue').textContent = polygonArea.toFixed(2);
+            let cost = getCost(Math.round((Math.round(length+20))*(Math.round(width+20))));
+            document.getElementById('stencilCostValue').textContent = cost.stencil;
+            document.getElementById('shippingCostValue').textContent = cost.shipping;
+            document.getElementById('totalCostValue').textContent = cost.total;
+
+
+            log(`Length: ${length.toFixed(2)} mm, Width: ${width.toFixed(2)} mm, Area: ${polygonArea.toFixed(2)} mm²`);
+            log(`Length with border: ${Math.round(length+20)} mm, Width with border: ${Math.round(width+20)} mm, Area with border: ${Math.round((Math.round(length+20))*(Math.round(width+20)))} mm²`);
+
+        } else {
+            alert('Invalid outline file: Not enough coordinates found.');
+        }
+    }
+
+    function getCost(area) {
+      let cost = {}
+      switch (true) {
+        case (area >= 0 && area <= 10000):
+          cost.stencil = 3500;
+          cost.shipping = 300;
+          cost.total = ((cost.stencil+cost.shipping)*1.18).toFixed(2);
+          break;
+        case (area >= 10001 && area <= 40000):
+          cost.stencil = 4500;
+          cost.shipping = 400;
+          cost.total = ((cost.stencil+cost.shipping)*1.18).toFixed(2);
+          break;
+        case (area >= 90001 && area <= 160000):
+          cost.stencil = 10000;
+          cost.shipping = 500;
+          cost.total = ((cost.stencil+cost.shipping)*1.18).toFixed(2);
+          break;
+        case (area > 160000):
+          cost.stencil = "Contact sales for anything above";
+          cost.shipping = "Contact sales for anything above";
+          break;
+        default:
+          cost.stencil = "Invalid area";
+          cost.shipping = "Invalid area";
+      }
+      return cost;
+    }
+
+    function extractCoordinates(content) {
+        const coordinates = [];
+        const lines = content.split('\n');
+        const coordRegex = /X(-?\d+)Y(-?\d+)/i;
+
+        const unitDivisor = 100000; // Adjust for the Gerber file's unit
+
+        lines.forEach(line => {
+            const match = line.match(coordRegex);
+            if (match) {
+                coordinates.push({
+                    x: parseInt(match[1]) / unitDivisor,
+                    y: parseInt(match[2]) / unitDivisor
+                });
+            }
+        });
+        return coordinates;
+    }
+
+    function calculateBounds(coordinates) {
+        const bounds = {
+            xMin: Infinity,
+            xMax: -Infinity,
+            yMin: Infinity,
+            yMax: -Infinity
+        };
+        coordinates.forEach(coord => {
+            bounds.xMin = Math.min(bounds.xMin, coord.x);
+            bounds.xMax = Math.max(bounds.xMax, coord.x);
+            bounds.yMin = Math.min(bounds.yMin, coord.y);
+            bounds.yMax = Math.max(bounds.yMax, coord.y);
+        });
+        return bounds;
+    }
+
+    function calculatePolygonArea(coordinates) {
+        let area = 0;
+        const n = coordinates.length;
+        for (let i = 0; i < n; i++) {
+            const j = (i + 1) % n;
+            area += coordinates[i].x * coordinates[j].y;
+            area -= coordinates[j].x * coordinates[i].y;
+        }
+        return Math.round(Math.abs(area / 2));
+    }
+});
+
+    </script>
+
+    <!-- <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script> -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
