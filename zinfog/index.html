@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zinfog Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #1a1a1a;
+        }
+
+        .header {
+            background-color: #008373;
+            color: white;
+            padding: 1rem;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        .card {
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            padding: 1.5rem;
+            border: 1px solid #333;
+        }
+
+        .card-title {
+            color: #00bf9a;
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .gauge-container {
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .gauge-label {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .gauge {
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .button {
+            background-color: #008373;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 1rem;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        Zinfog
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="card-title">Bin1 Sim</div>
+            <div class="gauge-container">
+                <div class="gauge-label">Bin1 Level</div>
+                <svg class="gauge" viewBox="0 0 200 200">
+                    <!-- Background arc -->
+                    <path
+                        d="M 30 140 A 70 70 0 0 1 170 140"
+                        fill="none"
+                        stroke="#444"
+                        stroke-width="30"
+                        stroke-linecap="round"
+                    />
+                    <!-- Value arc -->
+                    <path
+                        id="valueArc"
+                        fill="none"
+                        stroke="#ffeb3b"
+                        stroke-width="30"
+                        stroke-linecap="round"
+                    />
+                    <!-- Value text -->
+                    <text
+                        id="valueText"
+                        x="100"
+                        y="140"
+                        text-anchor="middle"
+                        fill="white"
+                        style="font-size: 36px; font-weight: 500;"
+                    >0</text>
+                    <text
+                        x="100"
+                        y="165"
+                        text-anchor="middle"
+                        fill="white"
+                        style="font-size: 14px;"
+                    >units</text>
+                </svg>
+            </div>
+            <button class="button" onclick="handleButton('/bin1/full')">FULL</button>
+            <button class="button" onclick="handleButton('/bin1/medium')">MEDIUM</button>
+            <button class="button" onclick="handleButton('/bin1/low')">LOW</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Dashboard Update</div>
+            <button class="button" onclick="handleButton('/bin1/dashboard/resetMainGrid')">RESET MAIN GRID</button>
+            <button class="button" onclick="handleButton('/bin1/dashboard/populateTable')">POPULATE TABLE</button>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'https://nodered.kabaniconnect.com';
+        let ws;
+
+        function connectWebSocket() {
+            ws = new WebSocket('wss://nodered.kabaniconnect.com/ws/bi1/level');
+            
+            ws.onmessage = (event) => {
+                const value = parseInt(event.data);
+                if (!isNaN(value)) {
+                    const clampedValue = Math.max(0, Math.min(100, value));
+                    updateGauge(clampedValue);
+                }
+            };
+
+            ws.onclose = () => {
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onerror = () => {
+                ws.close();
+            };
+        }
+
+        function calculateGaugePath(value) {
+            // Ensure value is between 0 and 100
+            const clampedValue = Math.min(100, Math.max(0, value));
+            
+            // Arc configuration
+            const radius = 70;
+            const centerX = 100;
+            const centerY = 140;
+            // const startAngle = Math.PI; // 180 degrees
+            // const maxAngle = 2 * Math.PI; // 360 degrees
+            
+            const startAngle = 0; // 180 degrees
+            const maxAngle = Math.PI; // 360 degrees
+
+            // Calculate the end angle based on the value
+            const endAngle = startAngle + (maxAngle - startAngle) * (clampedValue / 100);
+            
+            // Calculate start and end points
+            const startX = centerX - radius * Math.cos(startAngle);
+            const startY = centerY - radius * Math.sin(startAngle);
+            const endX = centerX - radius * Math.cos(endAngle);
+            const endY = centerY - radius * Math.sin(endAngle);
+            
+            // Generate the arc path
+            const largeArcFlag = endAngle - startAngle <= Math.PI ? "0" : "1";
+            return `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`;
+        }
+
+        function updateGauge(value) {
+            const valueArc = document.getElementById('valueArc');
+            const valueText = document.getElementById('valueText');
+            
+            valueArc.setAttribute('d', calculateGaugePath(value));
+            valueText.textContent = value;
+        }
+
+        async function handleButton(path) {
+            try {
+                const response = await fetch(`${BASE_URL}${path}`);
+                if (!response.ok) {
+                    console.error('Request failed:', response.status);
+                }
+            } catch (error) {
+                console.error('Error making request:', error);
+            }
+        }
+
+        // Initial connection
+        connectWebSocket();
+
+        // Update gauge on window resize for responsiveness
+        window.addEventListener('resize', () => {
+            const valueText = document.getElementById('valueText');
+            updateGauge(parseInt(valueText.textContent) || 0);
+        });
+    </script>
+</body>
+</html>
