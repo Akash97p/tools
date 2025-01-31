@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Kabani Bookings</title>
+    <!-- IMPORTANT for responsive behavior on mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Tailwind via a script (as requested) -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+</head>
+
+<body class="bg-gray-50 text-gray-800 flex flex-col min-h-screen" style="font-family:-apple-system, BlinkMacSystemFont,
+                Helvetica Neue, Helvetica, Arial, sans-serif">
+
+
+    <!-- Header -->
+    <header class="w-full p-4 bg-white border-b border-gray-200 flex items-center">
+        <h1 class="text-lg font-semibold text-gray-600">KABANI TECH PRIVATE LIMITED</h1>
+    </header>
+
+    <!-- Main Content Container -->
+    <!-- <div class="main-content flex-1 flex justify-center items-start p-5"> -->
+    <div class="main-content flex-1 flex justify-center items-center p-5 ">
+
+        <div
+            class="w-full max-w-screen-xl min-h-[600px] bg-white shadow-lg rounded-md overflow-hidden flex flex-col md:flex-row">
+
+            <!-- Left Panel -->
+            <div class="flex-1 p-8 md:p-10 border-b md:border-b-0 md:border-r border-gray-200" id="leftPanel">
+                <h2 class="text-xl md:text-2xl font-semibold mb-6 text-gray-600">Book an Appointment</h2>
+
+                <!-- Duration -->
+                <div class="mb-4">
+                    <label class="block mb-1 font-medium text-sm text-gray-600" for="duration">Duration</label>
+                    <select id="duration"
+                        class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="15">15 Minutes</option>
+                        <option value="30" selected>30 Minutes</option>
+                    </select>
+                </div>
+
+                <!-- Person -->
+                <div class="mb-4">
+                    <label class="block mb-1 font-medium text-sm text-gray-600" for="person">Person</label>
+                    <select id="person"
+                        class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="Sreekanth M" selected>Sreekanth M</option>
+                    </select>
+                </div>
+
+                <!-- Date -->
+                <div class="mb-4">
+                    <label class="block mb-1 font-medium text-sm text-gray-600" for="dateSelect">Date</label>
+                    <input type="date" id="dateSelect"
+                        class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </div>
+
+                <!-- Time Zone (fixed) -->
+                <div class="mb-4">
+                    <label class="block mb-1 font-medium text-sm text-gray-600">Time Zone</label>
+                    <div class="p-2 bg-gray-100 border border-gray-300 rounded text-gray-700">
+                        +5:30
+                    </div>
+                </div>
+
+                <!-- Time Slots -->
+                <div class="mb-4">
+                    <label class="block mb-1 font-medium text-sm text-gray-600">Available Times</label>
+                    <div id="timeSlots" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div id="rightPanel" class="flex-1 p-8 md:p-10 transition-opacity duration-300 opacity-30 pointer-events-none
+         flex flex-col items-center justify-center">
+                <!-- Inner container that holds both the heading and form -->
+                <div class="max-w-md w-full">
+                    <h2 class="text-left text-xl md:text-2xl font-semibold mb-6 text-gray-600">
+                        Enter Your Details
+                    </h2>
+                    <form id="bookingForm" class="w-full flex flex-col gap-4">
+                        <!-- Name -->
+                        <input type="text" id="userName" placeholder="Your Name" required class="p-3 border border-gray-300 rounded bg-gray-50
+               focus:outline-none focus:ring-2 focus:ring-blue-400" />
+
+                        <!-- Phone -->
+                        <input type="tel" id="userPhone" placeholder="+91" required class="p-3 border border-gray-300 rounded bg-gray-50
+               focus:outline-none focus:ring-2 focus:ring-blue-400" />
+
+                        <!-- Email -->
+                        <input type="email" id="userEmail" placeholder="Email Address" required class="p-3 border border-gray-300 rounded bg-gray-50
+               focus:outline-none focus:ring-2 focus:ring-blue-400" />
+
+                        <!-- Submit Button -->
+                        <button type="submit" class="bg-blue-400 hover:bg-blue-500 text-white font-medium
+               px-6 py-3 rounded focus:outline-none focus:ring-2
+               focus:ring-blue-500">
+                            Schedule Appointment
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 p-4 text-center text-sm text-gray-400" style="font-family:-apple-system, BlinkMacSystemFont,
+                Helvetica Neue, Helvetica, Arial, sans-serif">
+        &copy; Kabani Tech Private Limited. 2025 | Powered by Kabani Bookings.
+    </footer>
+
+    <script>
+        // -----------------------------------------------------
+        // JavaScript to handle the booking logic & date restriction
+        // + Real-time phone & email validation
+        // + Limit phone digits if +91
+        // -----------------------------------------------------
+
+        const durationSelect = document.getElementById('duration');
+        const personSelect = document.getElementById('person');
+        const dateSelect = document.getElementById('dateSelect');
+        const timeSlotsContainer = document.getElementById('timeSlots');
+        const rightPanel = document.getElementById('rightPanel');
+        const leftPanel = document.getElementById('leftPanel');
+
+        const userNameInput = document.getElementById('userName');
+        const userPhoneInput = document.getElementById('userPhone');
+        const userEmailInput = document.getElementById('userEmail');
+        const bookingForm = document.getElementById('bookingForm');
+
+        // Set 'min' on date picker to tomorrow
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const yyyy = tomorrow.getFullYear();
+        const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const dd = String(tomorrow.getDate()).padStart(2, '0');
+        const tomorrowStr = `${yyyy}-${mm}-${dd}`;
+        dateSelect.setAttribute('min', tomorrowStr);
+
+        // WebSocket endpoint
+        const wsEndpoint = 'wss://nodered.kabaniconnect.com/ws/bookings';
+        let ws; // WebSocket instance
+
+        // State
+        let selectedTime = null;
+
+        // ============== Time Slot Generation ==============
+        function generateTimeSlots() {
+            timeSlotsContainer.innerHTML = '';
+            selectedTime = null; // reset selected time
+
+            const duration = parseInt(durationSelect.value, 10);
+            const increment = duration === 15 ? 15 : 30;
+            const startHour = 10; // 10 AM
+            const endHour = 18; // 6 PM
+
+            let startMinutes = startHour * 60;
+            const endMinutes = endHour * 60;
+
+            while (startMinutes <= endMinutes) {
+                const hh = Math.floor(startMinutes / 60);
+                const mm = startMinutes % 60;
+                const label = formatTime12h(hh, mm);
+
+                const div = document.createElement('div');
+                div.classList.add(
+                    'time-slot',
+                    'p-2',
+                    'border',
+                    'border-gray-300',
+                    'rounded',
+                    'cursor-pointer',
+                    'transition',
+                    'hover:bg-blue-500',
+                    'hover:text-white'
+                );
+                div.textContent = label;
+
+                div.addEventListener('click', () => {
+                    // Clear previously selected
+                    document.querySelectorAll('.time-slot').forEach(slot => {
+                        slot.classList.remove('bg-blue-400', 'text-white', 'border-blue-600');
+                    });
+                    div.classList.add('bg-blue-400', 'text-white', 'border-blue-600');
+                    selectedTime = label;
+                    checkFormReadiness();
+                });
+
+                timeSlotsContainer.appendChild(div);
+                startMinutes += increment;
+            }
+        }
+
+        function formatTime12h(hh, mm) {
+            const suffix = hh >= 12 ? 'PM' : 'AM';
+            let hour = hh % 12;
+            if (hour === 0) hour = 12;
+            const minuteStr = String(mm).padStart(2, '0');
+            return `${hour}:${minuteStr}${suffix}`;
+        }
+
+        // On page load, generate the initial time slots
+        generateTimeSlots();
+
+        // If duration changes, regenerate time slots
+        durationSelect.addEventListener('change', generateTimeSlots);
+
+        // Check readiness
+        dateSelect.addEventListener('change', checkFormReadiness);
+
+        function checkFormReadiness() {
+            if (dateSelect.value && selectedTime) {
+                rightPanel.classList.remove('opacity-30', 'pointer-events-none');
+            } else {
+                rightPanel.classList.add('opacity-30', 'pointer-events-none');
+            }
+        }
+
+        // =========== Real-Time Validation ===========
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+
+        // phone input default
+        userPhoneInput.value = '+91';
+
+        // Listen for changes
+        userPhoneInput.addEventListener('input', () => {
+            formatAndValidatePhone();
+        });
+        userEmailInput.addEventListener('input', () => {
+            validateEmail();
+        });
+
+        // Limit phone length if +91
+        function formatAndValidatePhone() {
+            let phoneVal = userPhoneInput.value;
+
+            // If user typed +91, enforce 10 digits max after +91
+            if (phoneVal.startsWith('+91')) {
+                // separate the remainder (digits only)
+                let remainder = phoneVal.slice(3).replace(/\\D/g, '');
+                // limit to 10 digits
+                if (remainder.length > 10) {
+                    remainder = remainder.slice(0, 10);
+                }
+                // reconstruct
+                phoneVal = '+91' + remainder;
+                userPhoneInput.value = phoneVal;
+
+                // check validity
+                if (remainder.length === 10) {
+                    setValid(userPhoneInput);
+                } else {
+                    setInvalid(userPhoneInput);
+                }
+            } else {
+                // different country code, no numeric length check here
+                setValid(userPhoneInput);
+            }
+        }
+
+        function validateEmail() {
+            const emailVal = userEmailInput.value.trim();
+            // must match our flexible pattern
+            if (emailRegex.test(emailVal)) {
+                setValid(userEmailInput);
+            } else {
+                setInvalid(userEmailInput);
+            }
+        }
+
+        // Helpers to mark valid/invalid
+        function setValid(el) {
+            el.classList.remove('border-red-500');
+            el.classList.add('border-green-500');
+            el.classList.remove('focus:ring-blue-400');
+            el.classList.remove('focus:ring-red-400');
+            el.classList.add('focus:ring-green-400');
+        }
+
+        function setInvalid(el) {
+            el.classList.remove('border-green-500');
+            el.classList.add('border-red-500');
+            el.classList.remove('focus:ring-blue-400');
+            el.classList.remove('focus:ring-green-400');
+            el.classList.add('focus:ring-red-400');
+        }
+
+        // =========== Handle form submission -> Send WebSocket payload ===========
+        bookingForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            rightPanel.classList.add('opacity-30', 'pointer-events-none');
+            leftPanel.classList.add('opacity-30', 'pointer-events-none');
+            // final check
+            formatAndValidatePhone();
+            validateEmail();
+
+            // If fields still red, block
+            if (
+                userPhoneInput.classList.contains('border-red-500') ||
+                userEmailInput.classList.contains('border-red-500')
+            ) {
+                alert('Please enter valid phone number and email before scheduling.');
+                return;
+            }
+
+            const name = userNameInput.value.trim();
+            const phone = userPhoneInput.value.trim();
+            const email = userEmailInput.value.trim();
+            const person = personSelect.value;
+            const duration = parseInt(durationSelect.value, 10);
+            const dateStr = dateSelect.value;
+            const timeLabel = selectedTime;
+
+            if (!dateStr || !timeLabel) {
+                alert('Please select a date and time before scheduling.');
+                return;
+            }
+            if (!name || !phone || !email) {
+                alert('Please fill out all details.');
+                return;
+            }
+
+            // Convert local date/time to UTC (assuming local time is +5:30)
+            const [timePart, ampm] = timeLabel.split(/(AM|PM)/);
+            let [hour, minute] = timePart.split(':');
+            hour = parseInt(hour, 10);
+            minute = parseInt(minute, 10);
+            if (ampm === 'PM' && hour < 12) hour += 12;
+            if (ampm === 'AM' && hour === 12) hour = 0;
+
+            const localDate = new Date(dateStr);
+            localDate.setHours(hour, minute, 0, 0);
+
+            // Subtract 5.5h for UTC
+            const UTCtime = localDate.getTime() - (5.5 * 60 * 60 * 1000);
+            const dateObjUTC = new Date(UTCtime);
+
+            const eventStartTime = formatICS(dateObjUTC);
+            const endDateObj = new Date(UTCtime + duration * 60 * 1000);
+            const eventEndTime = formatICS(endDateObj);
+
+            const payload = {
+                bookedBy: {
+                    name: name,
+                    email: email,
+                    phoneNumber: phone,
+                },
+                bookedFor: person,
+                dateStr: dateStr,
+                dateIso: dateObjUTC,
+                eventStartTime: eventStartTime,
+                eventEndTime: eventEndTime,
+                time: timeLabel,
+                status: 'booked',
+                type: 'online',
+                duration: duration
+            };
+
+            console.log('Sending payload:', payload);
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                ws = new WebSocket(wsEndpoint);
+                ws.onopen = () => {
+                    console.log('WebSocket opened. Sending booking data...');
+                    ws.send(JSON.stringify(payload));
+                };
+                ws.onmessage = (msg) => {
+                    console.log("Message from server:", msg.data);
+                    let data;
+
+                    // Attempt to parse the server's JSON response
+                    try {
+                        data = JSON.parse(msg.data);
+                    } catch (error) {
+                        console.error("Failed to parse JSON:", error);
+                        return;
+                    }
+
+                    // Show a popup using the parsed data (responseMsg, bookingId)
+                    showPopup(data.responseMsg, data.bookingId);
+                };
+
+                ws.onerror = (err) => {
+                    console.error('WebSocket error:', err);
+                };
+            } else {
+                ws.send(JSON.stringify(payload));
+            }
+        });
+
+        function showPopup(responseMsg, bookingId) {
+            // Remove any existing popup
+            const oldPopup = document.getElementById("bookingPopup");
+            if (oldPopup) oldPopup.remove();
+
+            // Create a background overlay with blurred backdrop
+            const overlay = document.createElement("div");
+            overlay.id = "bookingPopup";
+            overlay.classList.add(
+                "fixed", "inset-0",
+                "flex", "items-center", "justify-center",
+                // Instead of black overlay, we use a translucent layer with a blur
+                "bg-white/30", // 30% white overlay
+                "backdrop-blur-sm", // slight blur effect
+                "z-50" // on top of other elements
+            );
+
+            // Create the popup container
+            const container = document.createElement("div");
+            container.classList.add(
+                "bg-white", "p-6", "rounded-lg", "shadow-lg",
+                "max-w-sm", "w-full", "mx-4"
+            );
+
+            // Create the message
+            const msgEl = document.createElement("p");
+            msgEl.classList.add("text-lg", "font-medium", "mb-2");
+            msgEl.textContent = responseMsg || "Your Booking is Confirmed!";
+
+            // Create the booking ID
+            const idEl = document.createElement("p");
+            idEl.classList.add("text-sm", "text-gray-700", "mb-4");
+            idEl.textContent = bookingId ? `Booking ID: ${bookingId}` : "";
+
+            // Create a close button that refreshes the page
+            const closeBtn = document.createElement("button");
+            closeBtn.classList.add(
+                "bg-blue-400", "text-white", "px-4", "py-2", "rounded",
+                "hover:bg-blue-500", "transition-colors"
+            );
+            closeBtn.textContent = "Close";
+            closeBtn.addEventListener("click", () => {
+                // Instead of removing overlay, refresh the page
+                location.reload();
+            });
+
+            // Assemble popup
+            container.appendChild(msgEl);
+            container.appendChild(idEl);
+            container.appendChild(closeBtn);
+            overlay.appendChild(container);
+            document.body.appendChild(overlay);
+        }
+
+        // Helper: ICS format: YYYYMMDDTHHMMSSZ
+        function formatICS(dateObj) {
+            const yyyy = dateObj.getUTCFullYear();
+            const mm = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+            const dd = String(dateObj.getUTCDate()).padStart(2, '0');
+            const HH = String(dateObj.getUTCHours()).padStart(2, '0');
+            const MM = String(dateObj.getUTCMinutes()).padStart(2, '0');
+            const SS = String(dateObj.getUTCSeconds()).padStart(2, '0');
+            return `${yyyy}${mm}${dd}T${HH}${MM}${SS}Z`;
+        }
+    </script>
+</body>
+
+</html>
