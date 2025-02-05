@@ -1,102 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tools Collection</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-    <style>
-        .tool-card {
-            text-align: center;
-            border: 1px solid #007bff;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 10px;
-            transition: transform 0.2s ease;
-        }
-        .tool-card:hover {
-            transform: scale(1.05);
-        }
-        .tool-title {
-            font-size: 1.2em;
-            margin-top: 10px;
-            color: #007bff;
-        }
-        .tool-link {
-            color: #007bff;
-            text-decoration: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tools Collection</title>
+  <!-- Tailwind Browser Plugin -->
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
 </head>
-<body>
+<body class="bg-gray-50 text-gray-800 flex flex-col min-h-screen font-sans">
+  <!-- Header -->
+  <header class="w-full p-4 bg-white border-b border-gray-200 flex items-center">
+    <h1 class="text-base font-semibold text-gray-600">KABANI TECH PRIVATE LIMITED</h1>
+  </header>
+  
+  <!-- Main Content -->
+  <!-- Removed centering classes so that the content starts at the top -->
+  <main class="flex-grow p-4">
+    <div class="max-w-7xl mx-auto px-4">
+      <h1 class="mb-4 text-2xl font-bold">Tools Collection</h1>
+      <!-- Responsive grid for tool cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <!-- Tool Card 1 -->
+        <a href="bmp_to_rgb565/index.html" class="no-underline">
+          <div class="text-center border border-blue-500 rounded-lg p-5 transition-transform duration-200 ease-in-out hover:scale-105">
+            <!-- <img src="path_to_image_or_icon_for_tool" alt="BMP to RGB565 Converter" class="w-24 h-24 mx-auto"> -->
+            <div class="mt-2 text-blue-500 text-lg">BMP to RGB565 Converter</div>
+          </div>
+        </a>
 
-    <!-- Header -->
-    <header class="w-full p-4 bg-white border-b border-gray-200 flex items-center">
-        <h1 class="text-lg font-semibold text-gray-600">KABANI TECH PRIVATE LIMITED</h1>
-    </header>
+        <!-- Tool Card 2 -->
+        <a href="gerberTool/index.html" class="no-underline">
+          <div class="text-center border border-blue-500 rounded-lg p-5 transition-transform duration-200 ease-in-out hover:scale-105">
+            <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Gerber Tool Alpha" class="w-24 h-24 mx-auto"> -->
+            <div class="mt-2 text-blue-500 text-lg">Gerber Tool Alpha</div>
+          </div>
+        </a>
 
-    <div class="container">
-        <h1 class="my-4 text-center">Tools Collection</h1>
-        <div class="row">
-            
-            <div class="col-md-4">
-                <a href="bmp_to_rgb565/index.html" class="tool-link">
-                    <div class="tool-card">
-                        <!-- <img src="path_to_image_or_icon_for_tool" alt="BMP to RGB565 Converter" style="width:100px; height:100px;"> -->
-                        <div class="tool-title">BMP to RGB565 Converter</div>
-                    </div>
-                </a>
-            </div>
-            
-            <!-- Add more tools here in a similar format -->
-            <div class="col-md-4">
-                <a href="gerberTool/index.html" class="tool-link">
-                    <div class="tool-card">
-                        <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Another Tool" style="width:100px; height:100px;"> -->
-                        <div class="tool-title">Gerber Tool Alpha</div>
-                    </div>
-                </a>
-            </div>
+        <!-- Tool Card 3 -->
+        <a href="zinfog/index.html" class="no-underline">
+          <div class="text-center border border-blue-500 rounded-lg p-5 transition-transform duration-200 ease-in-out hover:scale-105">
+            <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Zinfog Bin" class="w-24 h-24 mx-auto"> -->
+            <div class="mt-2 text-blue-500 text-lg">Zinfog Bin</div>
+          </div>
+        </a>
 
-            <!-- Add more tools here in a similar format -->
-            <div class="col-md-4">
-                <a href="zinfog/index.html" class="tool-link">
-                    <div class="tool-card">
-                        <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Another Tool" style="width:100px; height:100px;"> -->
-                        <div class="tool-title">Zinfog Bin</div>
-                    </div>
-                </a>
-            </div>
-            
-            <!-- Add more tools here in a similar format -->
-            <div class="col-md-4">
-                <a href="bookings/index.html" class="tool-link">
-                    <div class="tool-card">
-                        <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Another Tool" style="width:100px; height:100px;"> -->
-                        <div class="tool-title">Kabani Bookings</div>
-                    </div>
-                </a>
-            </div>
-            
-             <!-- Add more tools here in a similar format -->
-            <div class="col-md-4">
-                <a href="index.html" class="tool-link">
-                    <div class="tool-card">
-                        <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Another Tool" style="width:100px; height:100px;"> -->
-                        <div class="tool-title">Another Tool</div>
-                    </div>
-                </a>
-            </div>
-            
-        </div>
+        <!-- Tool Card 4 -->
+        <a href="bookings/index.html" class="no-underline">
+          <div class="text-center border border-blue-500 rounded-lg p-5 transition-transform duration-200 ease-in-out hover:scale-105">
+            <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Kabani Bookings" class="w-24 h-24 mx-auto"> -->
+            <div class="mt-2 text-blue-500 text-lg">Kabani Bookings</div>
+          </div>
+        </a>
+
+        <!-- Tool Card 5 -->
+        <a href="index.html" class="no-underline">
+          <div class="text-center border border-blue-500 rounded-lg p-5 transition-transform duration-200 ease-in-out hover:scale-105">
+            <!-- <img src="path_to_image_or_icon_for_another_tool" alt="Another Tool" class="w-24 h-24 mx-auto"> -->
+            <div class="mt-2 text-blue-500 text-lg">Another Tool</div>
+          </div>
+        </a>
+
+      </div>
     </div>
+  </main>
 
   <!-- Footer -->
-  <footer class="bg-white border-t border-gray-200 p-4 text-center text-sm text-gray-400"
-    style="font-family:-apple-system, BlinkMacSystemFont, Helvetica Neue, Helvetica, Arial, sans-serif">
-    &copy; Kabani Tech Private Limited. 2025 | Powered by Kabani Bookings.
+  <footer class="bg-white border-t border-gray-200 p-4 text-center text-sm text-gray-400">
+    &copy; 2025 | Kabani Tech Private Limited
   </footer>
-
 </body>
 </html>
