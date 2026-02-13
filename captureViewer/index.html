@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pi Capture Viewer</title>
+  <style>
+    :root{
+      --bg1:#0b1220;
+      --bg2:#0a2a2a;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.12);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --accent:#7cf7d4;
+      --danger:#ff6b6b;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius: 22px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 20% 15%, rgba(124,247,212,.18), transparent 60%),
+        radial-gradient(900px 600px at 80% 85%, rgba(102,170,255,.18), transparent 55%),
+        linear-gradient(160deg, var(--bg1), var(--bg2));
+      overflow:hidden;
+    }
+
+    .wrap{
+      height:100%;
+      display:grid;
+      place-items:center;
+      padding:24px;
+    }
+
+    .panel{
+      width:min(980px, 92vw);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(14px);
+      overflow:hidden;
+      position:relative;
+    }
+
+    /* Landing */
+    .landing{
+      padding:42px 34px;
+      display:grid;
+      gap:18px;
+      justify-items:center;
+      text-align:center;
+    }
+    .title{
+      font-size: clamp(22px, 2.6vw, 34px);
+      letter-spacing:.2px;
+      margin:0;
+    }
+    .subtitle{
+      margin:0;
+      color:var(--muted);
+      line-height:1.45;
+      max-width: 54ch;
+      font-size: 14.5px;
+    }
+
+    .btn{
+      appearance:none;
+      border:0;
+      cursor:pointer;
+      padding:14px 22px;
+      border-radius: 999px;
+      font-weight: 650;
+      color: #062018;
+      background: linear-gradient(135deg, var(--accent), #77aaff);
+      box-shadow: 0 10px 30px rgba(124,247,212,.22);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      user-select:none;
+    }
+    .btn:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+    .btn:active{ transform: translateY(0px) scale(.99); box-shadow: 0 8px 22px rgba(124,247,212,.18); }
+    .btn[disabled]{
+      cursor:not-allowed;
+      opacity:.65;
+      filter: grayscale(.2);
+    }
+
+    .hint{
+      color:var(--muted);
+      font-size: 12.5px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.20);
+      color: rgba(255,255,255,.86);
+    }
+
+    /* Viewer */
+    .viewer{
+      display:none;
+      background: rgba(0,0,0,.35);
+    }
+    .viewer.on{ display:block; }
+
+    .videoShell{
+      position:relative;
+      width:100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+    video{
+      width:100%;
+      height:100%;
+      object-fit: contain;
+      display:block;
+      background:#000;
+    }
+
+    .topbar{
+      position:absolute;
+      top:12px;
+      left:12px;
+      right:12px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      justify-content:space-between;
+      pointer-events:none;
+    }
+
+    .chip, .iconBtn, select{
+      pointer-events:auto;
+    }
+
+    .leftGroup, .rightGroup{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .chip{
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+      padding:9px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.38);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(10px);
+      color: rgba(255,255,255,.88);
+      font-size: 12.8px;
+      user-select:none;
+    }
+    .dot{
+      width:8px; height:8px;
+      border-radius:50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(124,247,212,.14);
+    }
+    .dot.off{
+      background: rgba(255,255,255,.45);
+      box-shadow:none;
+    }
+
+    select{
+      border-radius: 999px;
+      padding:9px 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.38);
+      color: rgba(255,255,255,.88);
+      outline:none;
+      font-size: 12.8px;
+      max-width: min(420px, 62vw);
+      backdrop-filter: blur(10px);
+    }
+
+    .iconBtn{
+      width:40px; height:40px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.38);
+      color: rgba(255,255,255,.9);
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease;
+      user-select:none;
+    }
+    .iconBtn:hover{ transform: translateY(-1px); background: rgba(0,0,0,.48); }
+    .iconBtn:active{ transform: translateY(0); }
+
+    .bottombar{
+      display:flex;
+      gap:12px;
+      padding:14px 16px 18px;
+      align-items:center;
+      justify-content:space-between;
+      background: linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.25));
+    }
+
+    .status{
+      color: var(--muted);
+      font-size: 13px;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .ghost{
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.90);
+      box-shadow:none;
+    }
+    .ghost:hover{ background: rgba(255,255,255,.10); }
+
+    .danger{
+      background: linear-gradient(135deg, var(--danger), #ffb36b);
+      color:#2b0b0b;
+      box-shadow: 0 10px 28px rgba(255,107,107,.18);
+    }
+
+    .toast{
+      position:absolute;
+      inset:auto 16px 16px 16px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display:none;
+      gap:10px;
+      align-items:flex-start;
+      backdrop-filter: blur(10px);
+    }
+    .toast.show{ display:flex; }
+    .toast strong{ display:block; margin-bottom:2px; }
+    .toast p{ margin:0; color: var(--muted); font-size: 13px; line-height:1.35; }
+
+    .srOnly{
+      position:absolute;
+      width:1px;height:1px;
+      padding:0;margin:-1px;
+      overflow:hidden;clip:rect(0,0,0,0);
+      white-space:nowrap;border:0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="panel" id="panel">
+
+      <!-- Landing screen -->
+      <section class="landing" id="landing">
+        <h1 class="title">Pi Capture Viewer</h1>
+        <p class="subtitle">
+          Click <b>Connect</b> to open your USB capture card feed (it shows up like a camera).
+          Once connected, press <span class="kbd">F</span> or use the fullscreen icon.
+        </p>
+
+        <button class="btn" id="connectBtn" type="button">
+          <!-- play icon -->
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <path d="M9 7.5v9l8-4.5-8-4.5Z" fill="currentColor" opacity=".95"/>
+            <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z" stroke="currentColor" opacity=".35"/>
+          </svg>
+          Connect
+        </button>
+
+        <div class="hint">
+          <span>Tip:</span>
+          <span class="kbd">F</span><span>toggles fullscreen</span>
+          <span class="kbd">Esc</span><span>exits fullscreen</span>
+        </div>
+
+      </section>
+
+      <!-- Viewer screen -->
+      <section class="viewer" id="viewer">
+        <div class="videoShell" id="videoShell">
+          <video id="video" playsinline autoplay></video>
+
+          <div class="topbar">
+            <div class="leftGroup">
+              <div class="chip" id="liveChip" title="Stream status">
+                <span class="dot" id="dot"></span>
+                <span id="chipText">Live</span>
+              </div>
+            </div>
+
+            <div class="rightGroup">
+              <label class="srOnly" for="deviceSelect">Camera device</label>
+              <select id="deviceSelect" style="display:none"></select>
+
+              <button class="iconBtn" id="fsBtn" type="button" title="Fullscreen (F)">
+                <span id="fsIcon" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottombar">
+          <div class="status" id="status">
+            <span>Connected.</span>
+            <span class="kbd">F</span><span>fullscreen</span>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn ghost" id="reconnectBtn" type="button" title="Reconnect camera">
+              Reconnect
+            </button>
+            <button class="btn danger" id="stopBtn" type="button" title="Stop camera stream">
+              Stop
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite">
+        <div style="margin-top:2px">
+          <strong id="toastTitle">Error</strong>
+          <p id="toastMsg">Something went wrong.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const landing = document.getElementById('landing');
+    const viewer = document.getElementById('viewer');
+    const connectBtn = document.getElementById('connectBtn');
+    const reconnectBtn = document.getElementById('reconnectBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    const video = document.getElementById('video');
+    const videoShell = document.getElementById('videoShell');
+
+    const deviceSelect = document.getElementById('deviceSelect');
+    const statusEl = document.getElementById('status');
+
+    const liveChip = document.getElementById('liveChip');
+    const chipText = document.getElementById('chipText');
+    const dot = document.getElementById('dot');
+
+    const fsBtn = document.getElementById('fsBtn');
+    const fsIcon = document.getElementById('fsIcon');
+
+    const toast = document.getElementById('toast');
+    const toastTitle = document.getElementById('toastTitle');
+    const toastMsg = document.getElementById('toastMsg');
+
+    let stream = null;
+    let currentDeviceId = null;
+
+    function showToast(title, msg) {
+      toastTitle.textContent = title;
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      window.clearTimeout(showToast._t);
+      showToast._t = window.setTimeout(() => toast.classList.remove('show'), 6500);
+    }
+
+    function setLiveState(isLive, text) {
+      chipText.textContent = text || (isLive ? 'Live' : 'Stopped');
+      dot.classList.toggle('off', !isLive);
+    }
+
+    function setStatus(htmlText) {
+      // Keep it simple, allow small inline markup from our own strings only
+      statusEl.innerHTML = htmlText;
+    }
+
+    function stopStream() {
+      if (stream) {
+        for (const track of stream.getTracks()) track.stop();
+        stream = null;
+      }
+      video.srcObject = null;
+      setLiveState(false, 'Stopped');
+    }
+
+    async function getStream(deviceId) {
+      // Many capture cards work best without asking for audio
+      const constraints = {
+        audio: false,
+        video: deviceId
+          ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
+          : { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }
+      };
+
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    }
+
+    async function populateDevices() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter(d => d.kind === 'videoinput');
+
+      if (cams.length <= 1) {
+        deviceSelect.style.display = 'none';
+        deviceSelect.innerHTML = '';
+        return;
+      }
+
+      deviceSelect.style.display = '';
+      const options = cams.map(d => {
+        const label = d.label?.trim() || `Camera (${d.deviceId.slice(0,6)}…)`;
+        const selected = d.deviceId === currentDeviceId ? 'selected' : '';
+        return `<option value="${d.deviceId}" ${selected}>${label}</option>`;
+      }).join('');
+
+      deviceSelect.innerHTML = options;
+    }
+
+    async function connect(deviceId = null) {
+      if (!('mediaDevices' in navigator) || !navigator.mediaDevices.getUserMedia) {
+        showToast('Unsupported', 'This browser does not support camera access (getUserMedia). Try Chrome/Edge/Firefox.');
+        return;
+      }
+
+      connectBtn.disabled = true;
+
+      try {
+        stopStream();
+        setLiveState(false, 'Connecting…');
+        setStatus('Requesting camera permission…');
+
+        stream = await getStream(deviceId);
+        video.srcObject = stream;
+
+        // Wait for metadata to ensure video dimensions available
+        await new Promise(resolve => {
+          if (video.readyState >= 1) return resolve();
+          video.onloadedmetadata = () => resolve();
+        });
+
+        // Switch UI
+        landing.style.display = 'none';
+        viewer.classList.add('on');
+
+        // Track the active device if available
+        const track = stream.getVideoTracks()[0];
+        const settings = track.getSettings ? track.getSettings() : {};
+        currentDeviceId = settings.deviceId || deviceId || null;
+
+        await populateDevices();
+
+        setLiveState(true, 'Live');
+        setStatus(`Streaming. Press <span class="kbd">F</span> for fullscreen.`);
+
+      } catch (err) {
+        console.error(err);
+        stopStream();
+        setLiveState(false, 'Stopped');
+
+        // Human-friendly errors
+        const name = err?.name || 'Error';
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          showToast('Permission blocked', 'Camera permission was denied. Allow camera access and try again.');
+        } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+          showToast('No camera found', 'No video device was found. Is the capture card plugged in?');
+        } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+          showToast('Device busy', 'The capture card may be in use by another app. Close other apps and retry.');
+        } else if (name === 'SecurityError') {
+          showToast('Security restriction', 'Camera access usually requires HTTPS or localhost. Try serving this page locally.');
+        } else {
+          showToast('Could not connect', `${name}: ${err?.message || 'Unknown error'}`);
+        }
+
+        // Keep landing visible
+        landing.style.display = '';
+        viewer.classList.remove('on');
+        setStatus('Ready.');
+      } finally {
+        connectBtn.disabled = false;
+      }
+    }
+
+    // Fullscreen helpers
+    function isFs() {
+      return !!document.fullscreenElement;
+    }
+
+    function renderFsIcon() {
+      // Inline SVG icons (enter/exit)
+      if (!isFs()) {
+        fsIcon.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 3H5a2 2 0 0 0-2 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M15 3h4a2 2 0 0 1 2 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M9 21H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M15 21h4a2 2 0 0 0 2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        `;
+        fsBtn.title = 'Fullscreen (F)';
+      } else {
+        fsIcon.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 9H5a2 2 0 0 0-2 2v0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M9 9V5a2 2 0 0 0-2-2h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M15 9h4a2 2 0 0 1 2 2v0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M15 9V5a2 2 0 0 1 2-2h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M9 15H5a2 2 0 0 1-2-2v0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M9 15v4a2 2 0 0 1-2 2h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M15 15h4a2 2 0 0 0 2-2v0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M15 15v4a2 2 0 0 0 2 2h0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        `;
+        fsBtn.title = 'Exit fullscreen (F / Esc)';
+      }
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (!isFs()) {
+          // Fullscreen the video container (looks best)
+          await videoShell.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (err) {
+        console.warn(err);
+        showToast('Fullscreen blocked', 'Your browser blocked fullscreen. Try clicking the fullscreen button again.');
+      }
+    }
+
+    // Events
+    connectBtn.addEventListener('click', () => connect(null));
+    reconnectBtn.addEventListener('click', () => connect(currentDeviceId));
+    stopBtn.addEventListener('click', () => {
+      stopStream();
+      viewer.classList.remove('on');
+      landing.style.display = '';
+      setStatus('Stopped.');
+    });
+
+    fsBtn.addEventListener('click', toggleFullscreen);
+
+    document.addEventListener('fullscreenchange', renderFsIcon);
+
+    document.addEventListener('keydown', (e) => {
+      // Toggle fullscreen with "F" (avoid when typing in inputs)
+      const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+      const typing = (tag === 'input' || tag === 'textarea' || tag === 'select');
+      if (typing) return;
+
+      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        // Only meaningful when viewer is open
+        if (viewer.classList.contains('on')) toggleFullscreen();
+      }
+    });
+
+    deviceSelect.addEventListener('change', async () => {
+      const id = deviceSelect.value;
+      if (!id) return;
+      currentDeviceId = id;
+      await connect(id);
+    });
+
+    // Initial icon render
+    renderFsIcon();
+
+    // Friendly note if running as file:// and blocked
+    window.addEventListener('load', () => {
+      // Some browsers still allow file:// camera, some do not. We just hint if it fails later.
+      setStatus('Ready.');
+    });
+  </script>
+</body>
+</html>
